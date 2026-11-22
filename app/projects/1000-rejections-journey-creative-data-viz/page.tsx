@@ -152,6 +152,10 @@ const FIELD_NOTES: FieldNote[] = [
     date: "2026-11-22",
     text: "Just changed the design of the visualization: if an ask is still pending after 3 months, it turns into a rejection. I did this because I realized that no answer is also a rejection.",
   },
+  {
+    date: "2026-11-22",
+    text: "A friend was inspired by this project and started her own!! That motivated me to keep going, even though I have been feeling a bit unmotivated lately.",
+  },
 ];
 
 // "2026-08-11" becomes "11-8-2026" — day first, no leading zero on the month.
@@ -659,7 +663,10 @@ export default function RejectionsJourneyPage() {
                       className="inline-block h-3.5 w-3.5 rounded-full"
                       style={{ backgroundColor: OUTCOME_COLOR.pending }}
                     />
-                    pending
+                    pending{" "}
+                    <span className="text-foreground/60">
+                      (turns into rejected after 3 months)
+                    </span>
                   </LegendRow>
                 </div>
               </div>
