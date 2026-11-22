@@ -150,10 +150,6 @@ const FIELD_NOTES: FieldNote[] = [
   },
   {
     date: "2026-11-22",
-    text: "Just changed the design of the visualization: if an ask is still pending after 3 months, it turns into a rejection. I did this because I realized that no answer is also a rejection.",
-  },
-  {
-    date: "2026-11-22",
     text: "A friend was inspired by this project and started her own!! That motivated me to keep going, even though I have been feeling a bit unmotivated lately.",
   },
 ];
@@ -180,28 +176,6 @@ interface VizNode {
   size: number;
   shape: Shape;
   color: string;
-}
-
-// An ask left pending for this many months counts as a rejection: no answer
-// is an answer.
-const PENDING_EXPIRY_MONTHS = 3;
-
-// Sheet dates are d-m-yyyy (e.g. "16-8-2026"); also accept ISO yyyy-mm-dd.
-function parseSheetDate(value: string): Date | null {
-  const parts = value.split(/[-/.]/).map((p) => parseInt(p, 10));
-  if (parts.length !== 3 || parts.some((p) => !Number.isFinite(p))) return null;
-  const [a, b, c] = parts;
-  const date = a > 31 ? new Date(a, b - 1, c) : new Date(c, b - 1, a);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function resolveOutcome(outcome: string, date: string, now: Date): string {
-  if (outcome && outcome !== "pending") return outcome;
-  const asked = parseSheetDate(date);
-  if (!asked) return outcome;
-  const expiry = new Date(asked);
-  expiry.setMonth(expiry.getMonth() + PENDING_EXPIRY_MONTHS);
-  return now >= expiry ? "rejected" : outcome;
 }
 
 function clampFearLevel(value: number): number {
@@ -254,24 +228,16 @@ export default function RejectionsJourneyPage() {
       skipEmptyLines: true,
       transformHeader: (header) => header.trim().toLowerCase(),
       complete: (results) => {
-        const now = new Date();
         const parsed: RejectionRow[] = results.data
           .filter((r) => r.date || r.ask || r.count)
-          .map((r, i) => {
-            const date = (r.date || "").trim();
-            return {
-              count: parseInt(r.count, 10) || i,
-              date,
-              ask: (r.ask || "").trim(),
-              category: (r.category || "").trim().toLowerCase(),
-              fearlvl: clampFearLevel(parseInt(r.fearlvl, 10)),
-              outcome: resolveOutcome(
-                (r.outcome || "").trim().toLowerCase(),
-                date,
-                now,
-              ),
-            };
-          });
+          .map((r, i) => ({
+            count: parseInt(r.count, 10) || i,
+            date: (r.date || "").trim(),
+            ask: (r.ask || "").trim(),
+            category: (r.category || "").trim().toLowerCase(),
+            fearlvl: clampFearLevel(parseInt(r.fearlvl, 10)),
+            outcome: (r.outcome || "").trim().toLowerCase(),
+          }));
 
         parsed.sort((a, b) => a.count - b.count);
 
@@ -663,10 +629,7 @@ export default function RejectionsJourneyPage() {
                       className="inline-block h-3.5 w-3.5 rounded-full"
                       style={{ backgroundColor: OUTCOME_COLOR.pending }}
                     />
-                    pending{" "}
-                    <span className="text-foreground/60">
-                      (turns into rejected after 3 months)
-                    </span>
+                    pending
                   </LegendRow>
                 </div>
               </div>
