@@ -148,6 +148,10 @@ const FIELD_NOTES: FieldNote[] = [
     date: "2026-09-13",
     text: "Very rewarding being accepted from asks I did not expect anything from.",
   },
+  {
+    date: "2026-11-22",
+    text: "Just changed the design of the visualization: if an ask is still pending after 3 months, it turns into a rejection. I did this because I realized that no answer is also a rejection.",
+  },
 ];
 
 // "2026-08-11" becomes "11-8-2026" — day first, no leading zero on the month.
@@ -172,6 +176,28 @@ interface VizNode {
   size: number;
   shape: Shape;
   color: string;
+}
+
+// An ask left pending for this many months counts as a rejection: no answer
+// is an answer.
+const PENDING_EXPIRY_MONTHS = 3;
+
+// Sheet dates are d-m-yyyy (e.g. "16-8-2026"); also accept ISO yyyy-mm-dd.
+function parseSheetDate(value: string): Date | null {
+  const parts = value.split(/[-/.]/).map((p) => parseInt(p, 10));
+  if (parts.length !== 3 || parts.some((p) => !Number.isFinite(p))) return null;
+  const [a, b, c] = parts;
+  const date = a > 31 ? new Date(a, b - 1, c) : new Date(c, b - 1, a);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function resolveOutcome(outcome: string, date: string, now: Date): string {
+  if (outcome && outcome !== "pending") return outcome;
+  const asked = parseSheetDate(date);
+  if (!asked) return outcome;
+  const expiry = new Date(asked);
+  expiry.setMonth(expiry.getMonth() + PENDING_EXPIRY_MONTHS);
+  return now >= expiry ? "rejected" : outcome;
 }
 
 function clampFearLevel(value: number): number {
@@ -224,16 +250,24 @@ export default function RejectionsJourneyPage() {
       skipEmptyLines: true,
       transformHeader: (header) => header.trim().toLowerCase(),
       complete: (results) => {
+        const now = new Date();
         const parsed: RejectionRow[] = results.data
           .filter((r) => r.date || r.ask || r.count)
-          .map((r, i) => ({
-            count: parseInt(r.count, 10) || i,
-            date: (r.date || "").trim(),
-            ask: (r.ask || "").trim(),
-            category: (r.category || "").trim().toLowerCase(),
-            fearlvl: clampFearLevel(parseInt(r.fearlvl, 10)),
-            outcome: (r.outcome || "").trim().toLowerCase(),
-          }));
+          .map((r, i) => {
+            const date = (r.date || "").trim();
+            return {
+              count: parseInt(r.count, 10) || i,
+              date,
+              ask: (r.ask || "").trim(),
+              category: (r.category || "").trim().toLowerCase(),
+              fearlvl: clampFearLevel(parseInt(r.fearlvl, 10)),
+              outcome: resolveOutcome(
+                (r.outcome || "").trim().toLowerCase(),
+                date,
+                now,
+              ),
+            };
+          });
 
         parsed.sort((a, b) => a.count - b.count);
 
