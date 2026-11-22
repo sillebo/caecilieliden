@@ -277,10 +277,20 @@ export default function ArticleColumn({
                     both rows, which is what puts the top of the first one level
                     with the heading rather than with the first line of prose.
                     A full-width chapter keeps the single column it already has
-                    at every width. */}
+                    at every width.
+
+                    The rows are auto then 1fr so that when the pictures are
+                    taller than the text — wide windows make the prose short —
+                    all the leftover height goes to the text's row. Left to
+                    auto, the grid shared it between both rows, and the heading
+                    row stretched, opening a gap under the heading. */}
                 <div
                   className={`grid grid-cols-1 gap-x-12 gap-y-4 ${
-                    left === null ? "" : left ? TEXT_LEFT : TEXT_RIGHT
+                    left === null
+                      ? ""
+                      : `min-[768px]:grid-rows-[auto_1fr] ${
+                          left ? TEXT_LEFT : TEXT_RIGHT
+                        }`
                   }`}
                 >
                   {(left !== null || chapter.showLabel) && (
